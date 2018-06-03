@@ -16,7 +16,8 @@ import (
 
 	"github.com/18F/hmacauth"
 
-	"github.com/ant1441/ldap_proxy/cookie"
+	"github.com/skybet/ldap_proxy/cookie"
+	"github.com/jtblin/go-ldap-client"
 )
 
 const SignatureHeader = "LAP-Signature"
@@ -64,7 +65,8 @@ type LdapProxy struct {
 	RealIPHeader  string
 	ProxyIPHeader string
 
-	LdapConnection *LdapConnection
+	LdapConnection *ldap.LDAPClient
+	LdapGroups []string
 
 	CookieCipher      *cookie.Cipher
 	skipAuthRegex     []string
@@ -131,15 +133,19 @@ func NewLdapProxy(opts *Options, validator func(string) bool) *LdapProxy {
 		}
 	}
 
-	ldapConnection := NewLdapConnection(
-		opts.LdapServerHost,
-		opts.LdapServerPort,
-		opts.LdapTLS,
-		opts.LdapBaseDn,
-		opts.LdapBindDn,
-		opts.LdapBindDnPassword,
-		opts.LdapScopeName,
-	)
+	ldapConnection := &ldap.LDAPClient{
+		Base: opts.LdapBaseDn,
+		Host: opts.LdapServerHost,
+		Port: opts.LdapServerPort,
+		UseSSL: opts.LdapTLS,
+		SkipTLS: !opts.LdapTLS,
+		BindDN: opts.LdapBindDn,
+		BindPassword: opts.LdapBindDnPassword,
+		UserFilter: "(uid=%s)",
+		GroupFilter: "(memberUid=%s)",
+		Attributes: []string{"mail"},
+	}
+	defer ldapConnection.Close()
 
 	return &LdapProxy{
 		CookieName:     opts.CookieName,
@@ -170,6 +176,7 @@ func NewLdapProxy(opts *Options, validator func(string) bool) *LdapProxy {
 		ProxyIPHeader: opts.ProxyIPHeader,
 
 		LdapConnection: ldapConnection,
+		LdapGroups:     opts.LdapGroups,
 
 		skipAuthRegex:     opts.SkipAuthRegex,
 		skipAuthIPs:       opts.skipIPs,
@@ -262,7 +269,6 @@ func (p *LdapProxy) SignInPage(rw http.ResponseWriter, req *http.Request, code i
 		ProxyPrefix   string
 		Footer        template.HTML
 	}{
-		LdapScopeName: p.LdapConnection.LdapScopeName,
 		SignInMessage: p.SignInMessage,
 		Failed:        failed,
 		Redirect:      redirect_url,
@@ -289,18 +295,29 @@ func (p *LdapProxy) ManualSignIn(rw http.ResponseWriter, req *http.Request) (str
 	return "", false
 }
 
-func (p *LdapProxy) LdapSignIn(rw http.ResponseWriter, req *http.Request) (string, bool) {
+func (p *LdapProxy) LdapSignIn(rw http.ResponseWriter, req *http.Request) (string, []string, bool) {
 	user := req.FormValue("username")
 	passwd := req.FormValue("password")
 	if user == "" {
-		return "", false
+		return "", nil, false
 	}
 	// check auth
-	if p.LdapConnection.VerifyUserPass(user, passwd) {
-		log.Printf("authenticated %q via LDAP", user)
-		return user, true
+	ok, _, err := p.LdapConnection.Authenticate(user, passwd)
+	if err != nil {
+		log.Printf("Error authenticating user %s: %+v", user, err)
+		return "", nil, false
 	}
-	return "", false
+	if ok {
+		log.Printf("authenticated %q via LDAP", user)
+		groups, err := p.LdapConnection.GetGroupsOfUser(user)
+		if err != nil {
+			log.Printf("Error getting groups for user %s: %+v", user, err)
+			return user, nil, true
+		}
+
+		return user, groups, true
+	}
+	return "", nil, false
 }
 
 func (p *LdapProxy) GetRedirect(req *http.Request) (redirect string, err error) {
@@ -426,11 +443,23 @@ func (p *LdapProxy) SignIn(rw http.ResponseWriter, req *http.Request) {
 		p.SaveSession(rw, req, session)
 		http.Redirect(rw, req, redirect, 302)
 	} else {
-		user, ok := p.LdapSignIn(rw, req)
+		user, groups, ok := p.LdapSignIn(rw, req)
 		if ok {
-			session := &SessionState{User: user}
-			p.SaveSession(rw, req, session)
-			http.Redirect(rw, req, redirect, 302)
+			if len(p.LdapGroups) > 0 {
+				log.Printf("User: %s is in groups: %+v", user, groups)
+				if UserInGroup(p.LdapGroups, groups) {
+					session := &SessionState{User: user}
+					p.SaveSession(rw, req, session)
+					http.Redirect(rw, req, redirect, 302)
+				} else {
+					log.Printf("User: %s is not in groups: %+v", user, p.LdapGroups)
+					p.SignInPage(rw, req, 200, true)
+				}
+			} else {
+				session := &SessionState{User: user}
+				p.SaveSession(rw, req, session)
+				http.Redirect(rw, req, redirect, 302)
+			}
 		} else {
 			p.SignInPage(rw, req, 200, true)
 		}
