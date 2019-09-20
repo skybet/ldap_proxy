@@ -140,8 +140,8 @@ func NewLdapProxy(opts *Options, validator func(string) bool) *LdapProxy {
 		InsecureSkipVerify: true,
 		BindDN:             opts.LdapBindDn,
 		BindPassword:       opts.LdapBindDnPassword,
-		UserFilter:         "(&(objectClass=User)(uid=%s))",
-		GroupFilter:        "(&(objectClass=group)(member:1.2.840.113556.1.4.1941:=%s))",
+		UserFilter:         opts.LdapUserFilter,
+		GroupFilter:        opts.LdapGroupFilter,
 		Attributes:         []string{"mail", "cn"},
 	}
 
