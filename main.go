@@ -75,6 +75,8 @@ func main() {
 	flagSet.String("ldap-bind-dn", "", "Bind DN for LDAP bind")
 	flagSet.String("ldap-bind-dn-password", "", "Bind DN password for LDAP bind")
 	flagSet.Var(&ldapGroups, "ldap-groups", "Groups a user must be in")
+	flagSet.String("ldap-user-filter", "(&(objectClass=User)(uid=%s))", "Search filter for user")
+	flagSet.String("ldap-group-filter", "(&(objectClass=group)(member:1.2.840.113556.1.4.1941:=%s))", "Search filter for group")
 
 	flagSet.Parse(os.Args[1:])
 

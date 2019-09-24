@@ -64,6 +64,8 @@ type Options struct {
 	LdapBindDn         string   `flag:"ldap-bind-dn" cfg:"ldap_bind_dn"`
 	LdapBindDnPassword string   `flag:"ldap-bind-dn-password" cfg:"ldap_bind_dn_password"`
 	LdapGroups         []string `flag:"ldap-groups" cfg:"ldap_groups"`
+	LdapUserFilter     string   `flag:"ldap-user-filter" cfg:"ldap_user_filter"`
+	LdapGroupFilter    string   `flag:"ldap-group-filter" cfg:"ldap_group_filter"`
 
 	// internal values that are set after config validation
 	proxyURLs         []*url.URL
@@ -94,6 +96,8 @@ func NewOptions() *Options {
 		PassUserHeaders:   true,
 		PassHostHeader:    true,
 		RequestLogging:    true,
+		LdapUserFilter:    "(&(objectClass=User)(uid=%s))",
+		LdapGroupFilter:   "(&(objectClass=group)(member:1.2.840.113556.1.4.1941:=%s))",
 	}
 }
 
