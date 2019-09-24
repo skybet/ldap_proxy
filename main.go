@@ -44,6 +44,7 @@ func main() {
 	flagSet.Bool("ssl-insecure-skip-verify", false, "skip validation of certificates presented when using HTTPS")
 	flagSet.String("real-ip-header", "X-Real-IP", "The header which specifies the real IP of the request. Caution: This header may allow a malicious actor to spoof an internal IP, bypassing whitelists. Set to the empty string to ignore")
 	flagSet.String("proxy-ip-header", "X-Forwarded-For", "The header which specifies the real IP of the proxied request. Caution: This header may allow a malicious actor to spoof an internal IP, bypassing whitelists. Set to the empty string to ignore")
+	flagSet.String("redirect-default-path", "/", "Default redirect path when sign-in success")
 
 	flagSet.Var(&emailDomains, "email-domain", "authenticate emails with the specified domain (may be given multiple times). Use * to authenticate any email")
 	flagSet.String("authenticated-emails-file", "", "authenticate against emails via file (one per line)")
@@ -75,6 +76,8 @@ func main() {
 	flagSet.String("ldap-bind-dn", "", "Bind DN for LDAP bind")
 	flagSet.String("ldap-bind-dn-password", "", "Bind DN password for LDAP bind")
 	flagSet.Var(&ldapGroups, "ldap-groups", "Groups a user must be in")
+	flagSet.String("ldap-user-filter", "(&(objectClass=User)(uid=%s))", "Search filter for user")
+	flagSet.String("ldap-group-filter", "(&(objectClass=group)(member:1.2.840.113556.1.4.1941:=%s))", "Search filter for group")
 
 	flagSet.Parse(os.Args[1:])
 
