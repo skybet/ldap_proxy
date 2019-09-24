@@ -1,6 +1,7 @@
 0.4.1 (2019-09-24)
 ==================
 * Make it possible to customize LDAP filter (UserFilter, GroupFilter)
+* Make it possible to customize redirect path when sign-in success
 
 0.4.0 (2018-11-23)
 ==================

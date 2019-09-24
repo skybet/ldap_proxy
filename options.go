@@ -51,6 +51,7 @@ type Options struct {
 	SkipAuthPreflight     bool     `flag:"skip-auth-preflight" cfg:"skip_auth_preflight"`
 	RealIPHeader          string   `flag:"real-ip-header" cfg:"real_ip_header"`
 	ProxyIPHeader         string   `flag:"proxy-ip-header" cfg:"proxy_ip_header"`
+	RedirectDefaultPath   string   `flag:"redirect-default-path" cfg:"redirect_default_path"`
 
 	RequestLogging bool `flag:"request-logging" cfg:"request_logging"`
 

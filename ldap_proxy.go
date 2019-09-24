@@ -51,12 +51,13 @@ type LdapProxy struct {
 	SignOutPath  string
 	AuthOnlyPath string
 
-	ProxyPrefix     string
-	SignInMessage   string
-	HtpasswdFile    *HtpasswdFile
-	serveMux        http.Handler
-	SetXAuthRequest bool
-	PassBasicAuth   bool
+	ProxyPrefix         string
+	SignInMessage       string
+	HtpasswdFile        *HtpasswdFile
+	serveMux            http.Handler
+	SetXAuthRequest     bool
+	PassBasicAuth       bool
+	RedirectDefaultPath string
 
 	PassUserHeaders   bool
 	BasicAuthPassword string
@@ -162,10 +163,11 @@ func NewLdapProxy(opts *Options, validator func(string) bool) *LdapProxy {
 		SignOutPath:  fmt.Sprintf("%s/sign_out", opts.ProxyPrefix),
 		AuthOnlyPath: fmt.Sprintf("%s/auth", opts.ProxyPrefix),
 
-		ProxyPrefix:     opts.ProxyPrefix,
-		serveMux:        serveMux,
-		SetXAuthRequest: opts.SetXAuthRequest,
-		PassBasicAuth:   opts.PassBasicAuth,
+		ProxyPrefix:         opts.ProxyPrefix,
+		serveMux:            serveMux,
+		SetXAuthRequest:     opts.SetXAuthRequest,
+		PassBasicAuth:       opts.PassBasicAuth,
+		RedirectDefaultPath: opts.RedirectDefaultPath,
 
 		PassUserHeaders:   opts.PassUserHeaders,
 		BasicAuthPassword: opts.BasicAuthPassword,
@@ -255,7 +257,7 @@ func (p *LdapProxy) SignInPage(rw http.ResponseWriter, req *http.Request, code i
 		redirectURL = req.Header.Get("X-Auth-Request-Redirect")
 	}
 	if redirectURL == p.SignInPath {
-		redirectURL = "/"
+		redirectURL = p.RedirectDefaultPath
 	}
 
 	t := struct {
